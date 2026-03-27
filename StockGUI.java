@@ -1,7 +1,6 @@
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.event.*;
 import java.io.FileWriter;
 import java.util.*;
 
@@ -15,7 +14,7 @@ class Stock {
     }
 
     void updatePrice() {
-        price += (Math.random() * 10 - 5); // dynamic price
+        price += (Math.random() * 10 - 5);
         if(price < 1) price = 1;
     }
 }
@@ -24,7 +23,6 @@ class User {
     double balance = 1000;
     HashMap<String, Integer> portfolio = new HashMap<>();
     HashMap<String, Double> invested = new HashMap<>();
-    ArrayList<String> history = new ArrayList<>();
 }
 
 public class StockGUI {
@@ -34,23 +32,43 @@ public class StockGUI {
 
     public static void main(String[] args) {
 
-        // sample stocks
+        // ===== MORE STOCKS ADDED =====
         stocks.add(new Stock("Apple",150));
         stocks.add(new Stock("Tesla",200));
         stocks.add(new Stock("Google",180));
+        stocks.add(new Stock("Amazon",170));
+        stocks.add(new Stock("Meta",160));
+        stocks.add(new Stock("Netflix",140));
+        stocks.add(new Stock("Nvidia",220));
 
         JFrame frame = new JFrame("Stock Trading System");
         frame.setSize(900,600);
         frame.setLayout(new BorderLayout());
 
-        // ===== MARKET TABLE =====
+        // ===== NAVIGATION BAR =====
+        JPanel navBar = new JPanel(new FlowLayout(FlowLayout.CENTER,20,10));
+        JButton marketBtn = new JButton("Market Data");
+        JButton tradeBtn = new JButton("Buy / Sell");
+        JButton portfolioBtn = new JButton("Portfolio");
+
+        navBar.add(marketBtn);
+        navBar.add(tradeBtn);
+        navBar.add(portfolioBtn);
+
+        frame.add(navBar,BorderLayout.NORTH);
+
+        // ===== MAIN PANEL (CARD LAYOUT) =====
+        JPanel mainPanel = new JPanel(new CardLayout());
+
+        // ================= PAGE 1: MARKET =================
+        JPanel marketPanel = new JPanel(new BorderLayout());
+
         String cols[] = {"Stock","Price"};
         DefaultTableModel model = new DefaultTableModel(cols,0);
         JTable table = new JTable(model);
-        JScrollPane scroll = new JScrollPane(table);
 
-        // ===== UPDATE MARKET =====
         JButton refreshBtn = new JButton("Refresh Prices");
+
         refreshBtn.addActionListener(e -> {
             model.setRowCount(0);
             for(Stock s:stocks){
@@ -59,16 +77,14 @@ public class StockGUI {
             }
         });
 
-        // initial load
         refreshBtn.doClick();
 
-        JPanel leftPanel = new JPanel(new BorderLayout());
-        leftPanel.add(new JLabel("Market Data",JLabel.CENTER),BorderLayout.NORTH);
-        leftPanel.add(scroll,BorderLayout.CENTER);
-        leftPanel.add(refreshBtn,BorderLayout.SOUTH);
+        marketPanel.add(new JLabel("Market Data",JLabel.CENTER),BorderLayout.NORTH);
+        marketPanel.add(new JScrollPane(table),BorderLayout.CENTER);
+        marketPanel.add(refreshBtn,BorderLayout.SOUTH);
 
-        // ===== CENTER PANEL =====
-        JPanel center = new JPanel(new GridLayout(8,1,5,5));
+        // ================= PAGE 2: BUY/SELL =================
+        JPanel tradePanel = new JPanel(new GridLayout(8,1,5,5));
 
         JTextField stockField = new JTextField();
         JTextField qtyField = new JTextField();
@@ -79,29 +95,30 @@ public class StockGUI {
         JButton addBalanceBtn = new JButton("Add Balance");
         JButton searchBtn = new JButton("Search Stock");
 
-        center.add(new JLabel("Stock Name"));
-        center.add(stockField);
-        center.add(new JLabel("Quantity"));
-        center.add(qtyField);
-        center.add(buyBtn);
-        center.add(sellBtn);
-        center.add(new JLabel("Add Balance"));
-        center.add(balanceField);
-        center.add(addBalanceBtn);
-        center.add(searchBtn);
+        tradePanel.add(new JLabel("Stock Name"));
+        tradePanel.add(stockField);
+        tradePanel.add(new JLabel("Quantity"));
+        tradePanel.add(qtyField);
+        tradePanel.add(buyBtn);
+        tradePanel.add(sellBtn);
+        tradePanel.add(new JLabel("Add Balance"));
+        tradePanel.add(balanceField);
+        tradePanel.add(addBalanceBtn);
+        tradePanel.add(searchBtn);
 
-        // ===== RIGHT PANEL (PORTFOLIO) =====
+        // ================= PAGE 3: PORTFOLIO =================
+        JPanel portfolioPanel = new JPanel(new BorderLayout());
+
         JTextArea portfolioArea = new JTextArea();
-        JScrollPane portfolioScroll = new JScrollPane(portfolioArea);
-
         JLabel balanceLabel = new JLabel("Balance: " + user.balance);
 
-        JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.add(balanceLabel,BorderLayout.NORTH);
-        rightPanel.add(portfolioScroll,BorderLayout.CENTER);
+        JButton saveBtn = new JButton("Save Data");
 
-        // ===== FUNCTIONS =====
+        portfolioPanel.add(balanceLabel,BorderLayout.NORTH);
+        portfolioPanel.add(new JScrollPane(portfolioArea),BorderLayout.CENTER);
+        portfolioPanel.add(saveBtn,BorderLayout.SOUTH);
 
+        // ===== FUNCTION =====
         Runnable updatePortfolio = () -> {
             String text = "";
             double totalValue = 0;
@@ -118,7 +135,7 @@ public class StockGUI {
                 double value = qty * price;
                 double invested = user.invested.getOrDefault(s,0.0);
 
-                text += s + " : " + qty + " shares = " + (int)value + "\n";
+                text += s + " : " + qty + " = " + (int)value + "\n";
 
                 totalValue += value;
                 investedTotal += invested;
@@ -152,8 +169,6 @@ public class StockGUI {
 
                             user.invested.put(name,
                                     user.invested.getOrDefault(name,0.0)+cost);
-
-                            user.history.add("Bought "+qty+" "+name);
                         } else {
                             JOptionPane.showMessageDialog(frame,"Not enough balance");
                         }
@@ -180,7 +195,6 @@ public class StockGUI {
                         if(s.name.equalsIgnoreCase(name)){
                             user.balance += s.price * qty;
                             user.portfolio.put(name, owned-qty);
-                            user.history.add("Sold "+qty+" "+name);
                         }
                     }
                 } else {
@@ -222,8 +236,7 @@ public class StockGUI {
             JOptionPane.showMessageDialog(frame,"Stock not found");
         });
 
-        // ===== SAVE DATA =====
-        JButton saveBtn = new JButton("Save Data");
+        // ===== SAVE =====
         saveBtn.addActionListener(e -> {
             try{
                 FileWriter fw = new FileWriter("portfolio.txt");
@@ -235,12 +248,18 @@ public class StockGUI {
             }
         });
 
-        rightPanel.add(saveBtn,BorderLayout.SOUTH);
+        // ===== ADD PAGES =====
+        mainPanel.add(marketPanel,"market");
+        mainPanel.add(tradePanel,"trade");
+        mainPanel.add(portfolioPanel,"portfolio");
 
-        // ===== ADD PANELS =====
-        frame.add(leftPanel,BorderLayout.WEST);
-        frame.add(center,BorderLayout.CENTER);
-        frame.add(rightPanel,BorderLayout.EAST);
+        frame.add(mainPanel,BorderLayout.CENTER);
+
+        CardLayout cl = (CardLayout)(mainPanel.getLayout());
+
+        marketBtn.addActionListener(e -> cl.show(mainPanel,"market"));
+        tradeBtn.addActionListener(e -> cl.show(mainPanel,"trade"));
+        portfolioBtn.addActionListener(e -> cl.show(mainPanel,"portfolio"));
 
         frame.setVisible(true);
     }
